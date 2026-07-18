@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("Eshu")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+012e120e456263c8a7f2b9063c40016863d51ebd")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+3b2da6af439c8c7f1c6835c867a910a2459bf5bc")]
 [assembly: System.Reflection.AssemblyProductAttribute("Eshu")]
 [assembly: System.Reflection.AssemblyTitleAttribute("Eshu")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
