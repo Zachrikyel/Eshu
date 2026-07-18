@@ -1,7 +1,13 @@
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Text.Json;
 using System.Windows;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Eshu.Models;
+using Eshu.Services;
+using Eshu.ViewModels;
 
 namespace Eshu
 {
@@ -18,9 +24,9 @@ namespace Eshu
             ServiceProvider = services.BuildServiceProvider();
 
             // Crea el archivo eshu.db si todavía no existe (primer arranque).
-            using (var scope = ServiceProvider.CreateScope())
+            var dbFactory = ServiceProvider.GetRequiredService<IDbContextFactory<EshuDbContext>>();
+            using (var db = dbFactory.CreateDbContext())
             {
-                var db = scope.ServiceProvider.GetRequiredService<EshuDbContext>();
                 db.Database.EnsureCreated();
             }
 
@@ -30,10 +36,46 @@ namespace Eshu
 
         private static void ConfigureServices(IServiceCollection services)
         {
-            services.AddDbContext<EshuDbContext>();
+            // Fábrica en vez de un contexto único: el motor de sync crea uno nuevo
+            // por operación, porque DbContext no es seguro entre hilos y los agentes
+            // avisan desde hilos distintos (FileSystemWatcher, el timer de GOG).
+            services.AddDbContextFactory<EshuDbContext>();
 
-            // Parte 2: aquí registramos SteamAgent/EpicAgent/LocalAgent y el motor de sincronización.
-            // Por ahora el contenedor solo conoce la base de datos.
+            services.AddSingleton<ILibraryAgent, SteamAgent>();
+            services.AddSingleton<ILibraryAgent, EpicAgent>();
+            services.AddSingleton<ILibraryAgent, GogAgent>();
+            services.AddSingleton<ILibraryAgent>(_ => new LocalAgent(LoadWatchedFolders()));
+
+            services.AddSingleton<LibrarySyncEngine>();
+            services.AddSingleton<LibraryViewModel>();
+
+            // Parte 5: aquí entra MainWindow, pidiendo LibraryViewModel del contenedor.
+        }
+
+        // "Local" no tiene una tienda que le diga qué carpetas mirar, así que las
+        // leemos de un archivo de texto junto al ejecutable — cualquier cantidad
+        // de discos o rutas, sin tocar código para agregar una nueva.
+        private static List<string> LoadWatchedFolders()
+        {
+            string configPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "watched-folders.json");
+
+            if (!File.Exists(configPath))
+            {
+                // Primer arranque: dejamos un ejemplo editable en vez de una lista vacía.
+                var example = new List<string> { @"C:\Juegos", @"D:\Games" };
+                File.WriteAllText(configPath, JsonSerializer.Serialize(example, new JsonSerializerOptions { WriteIndented = true }));
+                return example;
+            }
+
+            try
+            {
+                var json = File.ReadAllText(configPath);
+                return JsonSerializer.Deserialize<List<string>>(json) ?? new List<string>();
+            }
+            catch
+            {
+                return new List<string>();
+            }
         }
     }
 }

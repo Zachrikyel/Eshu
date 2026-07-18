@@ -1,8 +1,13 @@
+using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
+using System.Runtime.CompilerServices;
 
 namespace Eshu.Models
 {
-    public class Game
+    // Implementa INotifyPropertyChanged porque el motor de sincronización va a
+    // actualizar juegos que ya están en pantalla (por ejemplo, cuando detecta una
+    // instalación en vivo) — sin esto, la vitrina no se refrescaría sola.
+    public class Game : INotifyPropertyChanged
     {
         [Key]
         public int Id { get; set; }
@@ -10,20 +15,46 @@ namespace Eshu.Models
         [Required]
         public string Title { get; set; } = string.Empty;
 
-        // De qué tienda viene: "Steam", "Epic", "GOG", "Xbox", "Local"...
-        // Junto con Title arma la "firma" que identifica un juego sin duplicarlo.
+        // De qué tienda viene: "Steam", "Epic Games", "GOG", "Local"...
         public string Platform { get; set; } = string.Empty;
 
         public string Genre { get; set; } = string.Empty;
-        public string? InstallPath { get; set; }
-        public bool IsInstalled { get; set; }
-        public bool IsFavorite { get; set; }
+
+        private string? _installPath;
+        public string? InstallPath
+        {
+            get => _installPath;
+            set { _installPath = value; OnPropertyChanged(); }
+        }
+
+        private bool _isInstalled;
+        public bool IsInstalled
+        {
+            get => _isInstalled;
+            set { _isInstalled = value; OnPropertyChanged(); }
+        }
+
+        private bool _isFavorite;
+        public bool IsFavorite
+        {
+            get => _isFavorite;
+            set { _isFavorite = value; OnPropertyChanged(); }
+        }
 
         public int HoursPlayed { get; set; }
         public int EstimatedHoursToBeat { get; set; } // dato tipo HowLongToBeat, para el motor de recomendación
 
-        public GameStatus Status { get; set; } = GameStatus.PendingValidation;
+        private GameStatus _status = GameStatus.PendingValidation;
+        public GameStatus Status
+        {
+            get => _status;
+            set { _status = value; OnPropertyChanged(); }
+        }
 
         public string CoverColorHex { get; set; } = "#6C5CE7"; // temporal, hasta tener carátulas reales
+
+        public event PropertyChangedEventHandler? PropertyChanged;
+        private void OnPropertyChanged([CallerMemberName] string? name = null)
+            => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
     }
 }
