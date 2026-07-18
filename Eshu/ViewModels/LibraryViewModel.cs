@@ -1,9 +1,11 @@
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 using System.Windows;
+using System.Windows.Data;
 using System.Windows.Threading;
 using Microsoft.EntityFrameworkCore;
 using Eshu.Models;
@@ -18,6 +20,10 @@ namespace Eshu.ViewModels
         private readonly Dispatcher _dispatcher;
 
         public ObservableCollection<Game> Games { get; } = new();
+        public ICollectionView GamesView { get; }
+
+        private readonly HashSet<GameStatus> _activeStatusFilters = new();
+        private bool _favoritesOnly;
 
         private Game? _selectedGame;
         public Game? SelectedGame
@@ -38,6 +44,10 @@ namespace Eshu.ViewModels
             _syncEngine = syncEngine;
             _dbContextFactory = dbContextFactory;
             _dispatcher = Application.Current.Dispatcher;
+
+            GamesView = CollectionViewSource.GetDefaultView(Games);
+            GamesView.Filter = FilterGames;
+            ApplySort(SortMode.Alphabetical);
 
             // Los agentes avisan desde hilos de fondo (FileSystemWatcher, el timer de GOG);
             // todo lo que toque Games tiene que volver al hilo de la interfaz primero.
@@ -102,6 +112,52 @@ namespace Eshu.ViewModels
             {
                 existing.IsInstalled = false;
             }
+        }
+
+        // Los 6 chips llaman esto — Favoritos es su propio interruptor porque es
+        // una dimensión distinta (no se combina "o" con los estados, se combina "y").
+        public void ToggleFavoritesFilter()
+        {
+            _favoritesOnly = !_favoritesOnly;
+            GamesView.Refresh();
+        }
+
+        // Los 5 chips de estado se combinan entre sí con "o": si marcas "No jugado"
+        // y "Pendiente" a la vez, ves los que son cualquiera de los dos.
+        public void ToggleStatusFilter(GameStatus status)
+        {
+            if (!_activeStatusFilters.Remove(status))
+            {
+                _activeStatusFilters.Add(status);
+            }
+            GamesView.Refresh();
+        }
+
+        public void ApplySort(SortMode mode)
+        {
+            string propertyName = mode switch
+            {
+                SortMode.Alphabetical => nameof(Game.Title),
+                SortMode.InstallDate => nameof(Game.InstalledAt),
+                SortMode.AcquisitionDate => nameof(Game.AcquiredAt),
+                SortMode.HoursPlayed => nameof(Game.HoursPlayed),
+                SortMode.LastPlayed => nameof(Game.LastPlayedAt),
+                _ => nameof(Game.Title)
+            };
+            var direction = mode == SortMode.Alphabetical ? ListSortDirection.Ascending : ListSortDirection.Descending;
+
+            GamesView.SortDescriptions.Clear();
+            GamesView.SortDescriptions.Add(new SortDescription(propertyName, direction));
+        }
+
+        // Sin chips marcados, se ve todo — marcar filtros nunca deja la vitrina
+        // vacía por accidente, solo la acota.
+        private bool FilterGames(object obj)
+        {
+            if (obj is not Game game) return false;
+            if (_favoritesOnly && !game.IsFavorite) return false;
+            if (_activeStatusFilters.Count > 0 && !_activeStatusFilters.Contains(game.Status)) return false;
+            return true;
         }
 
         public event PropertyChangedEventHandler? PropertyChanged;

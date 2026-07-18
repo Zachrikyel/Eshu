@@ -1,0 +1,125 @@
+<Window x:Class="Eshu.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:conv="clr-namespace:Eshu.Converters"
+        xmlns:models="clr-namespace:Eshu.Models"
+        Title="Eshu" Height="720" Width="1150" MinHeight="560" MinWidth="820"
+        Background="{StaticResource BgBaseBrush}">
+
+    <Window.Resources>
+        <conv:HexToBrushConverter x:Key="HexToBrush"/>
+        <conv:StatusToStringConverter x:Key="StatusToString"/>
+        <conv:StatusToColorConverter x:Key="StatusToColor"/>
+        <conv:InstalledToOpacityConverter x:Key="InstalledToOpacity"/>
+    </Window.Resources>
+
+    <Grid Margin="24">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Barra superior: estado de sync a la izquierda, acciones globales a la derecha -->
+        <DockPanel Grid.Row="0" Margin="0,0,0,20">
+            <TextBlock DockPanel.Dock="Left" Foreground="{StaticResource TextSecondaryBrush}" VerticalAlignment="Center">
+                <TextBlock.Style>
+                    <Style TargetType="TextBlock">
+                        <Setter Property="Text" Value="Sincronizado"/>
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding IsSyncing}" Value="True">
+                                <Setter Property="Text" Value="Sincronizando..."/>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </TextBlock.Style>
+            </TextBlock>
+            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" HorizontalAlignment="Right">
+                <Button x:Name="SyncButton" Content="Sincronizar" Click="SyncButton_Click" Margin="0,0,8,0" Padding="12,6"/>
+                <Button x:Name="FullscreenButton" Content="Pantalla completa" Click="FullscreenButton_Click" Margin="0,0,8,0" Padding="12,6"/>
+                <Button x:Name="ExitButton" Content="Salir" Click="ExitButton_Click" Margin="0,0,8,0" Padding="12,6"/>
+                <Button x:Name="ShutdownButton" Content="Apagar" Click="ShutdownButton_Click" Padding="12,6"/>
+            </StackPanel>
+        </DockPanel>
+
+        <!-- Hero: carátula grande + título tipo marquesina con glow + botón Iniciar -->
+        <Border Grid.Row="1" Background="{StaticResource BgPanelBrush}" CornerRadius="16" Padding="28" Margin="0,0,0,16">
+            <StackPanel Orientation="Horizontal">
+                <Border Width="130" Height="130" CornerRadius="16"
+                        Background="{Binding SelectedGame.CoverColorHex, Converter={StaticResource HexToBrush}}"/>
+                <StackPanel Margin="24,0,0,0" VerticalAlignment="Center">
+                    <Border Background="{Binding SelectedGame.Status, Converter={StaticResource StatusToColor}}"
+                            CornerRadius="5" Padding="10,4" HorizontalAlignment="Left">
+                        <TextBlock Text="{Binding SelectedGame.Status, Converter={StaticResource StatusToString}}"
+                                   FontSize="11" FontWeight="Bold"/>
+                    </Border>
+                    <TextBlock Text="{Binding SelectedGame.Title}" FontSize="34" FontWeight="Bold"
+                               Foreground="{StaticResource TextPrimaryBrush}" Margin="0,10,0,4">
+                        <TextBlock.Effect>
+                            <DropShadowEffect Color="#2DE3C8" BlurRadius="24" ShadowDepth="0" Opacity="0.6"/>
+                        </TextBlock.Effect>
+                    </TextBlock>
+                    <TextBlock Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,16">
+                        <Run Text="{Binding SelectedGame.Genre}"/>
+                        <Run Text=" · "/>
+                        <Run Text="{Binding SelectedGame.HoursPlayed}"/>
+                        <Run Text=" h jugadas"/>
+                    </TextBlock>
+                    <Button x:Name="LaunchButton" Content="Iniciar" Click="LaunchButton_Click"
+                            Padding="20,10" Background="{StaticResource CyanBrush}"
+                            BorderThickness="0" HorizontalAlignment="Left"/>
+                </StackPanel>
+            </StackPanel>
+        </Border>
+
+        <!-- Filtros + orden: ahora sí filtran y ordenan la vitrina de abajo -->
+        <WrapPanel Grid.Row="2" Margin="0,0,0,12">
+            <ToggleButton Content="Favoritos" Click="FavoritesChip_Click" Margin="0,0,8,0" Padding="12,6"/>
+            <ToggleButton Content="No jugado" Tag="{x:Static models:GameStatus.Unplayed}" Click="StatusFilterChip_Click" Margin="0,0,8,0" Padding="12,6"/>
+            <ToggleButton Content="Jugando" Tag="{x:Static models:GameStatus.Playing}" Click="StatusFilterChip_Click" Margin="0,0,8,0" Padding="12,6"/>
+            <ToggleButton Content="Terminado" Tag="{x:Static models:GameStatus.Completed}" Click="StatusFilterChip_Click" Margin="0,0,8,0" Padding="12,6"/>
+            <ToggleButton Content="Abandonado" Tag="{x:Static models:GameStatus.Abandoned}" Click="StatusFilterChip_Click" Margin="0,0,8,0" Padding="12,6"/>
+            <ToggleButton Content="Pendiente" Tag="{x:Static models:GameStatus.PendingValidation}" Click="StatusFilterChip_Click" Margin="0,0,16,0" Padding="12,6"/>
+            <ComboBox Width="160" SelectedIndex="0" SelectionChanged="SortCombo_SelectionChanged">
+                <ComboBoxItem Content="Alfabético"/>
+                <ComboBoxItem Content="Instalación"/>
+                <ComboBoxItem Content="Adquisición"/>
+                <ComboBoxItem Content="Horas jugadas"/>
+                <ComboBoxItem Content="Última vez jugado"/>
+            </ComboBox>
+        </WrapPanel>
+
+        <!-- Vitrina: fila horizontal con scroll, conectada a la vista filtrada/ordenada -->
+        <ScrollViewer Grid.Row="3" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
+            <ItemsControl ItemsSource="{Binding GamesView}">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <StackPanel Orientation="Horizontal"/>
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <Button Click="GameTile_Click" Margin="0,0,12,0" Padding="0"
+                                Background="Transparent" BorderThickness="0" Cursor="Hand">
+                            <StackPanel Width="92">
+                                <Border Width="92" Height="92" CornerRadius="10"
+                                        Background="{Binding CoverColorHex, Converter={StaticResource HexToBrush}}"
+                                        Opacity="{Binding IsInstalled, Converter={StaticResource InstalledToOpacity}}"/>
+                                <TextBlock Text="{Binding Title}" FontSize="11" TextTrimming="CharacterEllipsis"
+                                           Foreground="{StaticResource TextSecondaryBrush}" Margin="0,6,0,0"
+                                           HorizontalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </ScrollViewer>
+
+        <!-- Pie: atajos de teclado (todavía decorativos, la Parte 6 los conecta de verdad) -->
+        <TextBlock Grid.Row="4" Margin="0,12,0,0" Foreground="{StaticResource TextSecondaryBrush}" FontSize="11"
+                   Text="Enter inicia · F favorito · Ctrl+F buscar"/>
+
+    </Grid>
+</Window>

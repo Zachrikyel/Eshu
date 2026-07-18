@@ -67,6 +67,7 @@ namespace Eshu.Services
 
             if (existing == null)
             {
+                scanned.InstalledAt = DateTime.Now;
                 db.Games.Add(scanned);
                 GameInstalled?.Invoke(scanned);
             }

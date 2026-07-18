@@ -70,4 +70,15 @@ namespace Eshu.Converters
         public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
             => throw new NotImplementedException();
     }
+
+    // Atenúa las cabinas de juegos no instalados en la vitrina, para diferenciarlos
+    // de un vistazo sin necesitar una etiqueta aparte.
+    public class InstalledToOpacityConverter : IValueConverter
+    {
+        public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+            => (value is bool isInstalled && isInstalled) ? 1.0 : 0.45;
+
+        public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+            => throw new NotImplementedException();
+    }
 }

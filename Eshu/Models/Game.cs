@@ -1,3 +1,4 @@
+using System;
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 using System.Runtime.CompilerServices;
@@ -43,6 +44,20 @@ namespace Eshu.Models
 
         public int HoursPlayed { get; set; }
         public int EstimatedHoursToBeat { get; set; } // dato tipo HowLongToBeat, para el motor de recomendación
+
+        // 1 (relajado) a 5 (exigencia máxima), para la pregunta de "Fricción" del
+        // motor de recomendación. Null mientras no tengamos cómo poblarlo — un
+        // juego sin dato simplemente no suma ni resta en esa pregunta.
+        public int? Difficulty { get; set; }
+
+        // La fecha en que Eshu vio el juego por primera vez — se llena sola.
+        public DateTime? InstalledAt { get; set; }
+
+        // Estas dos necesitan leer datos de cuenta de cada tienda (compras, sesiones
+        // de juego), no solo escanear archivos locales — todavía no las llenamos.
+        // El orden por estas opciones ya funciona, solo que hoy no diferencia nada.
+        public DateTime? AcquiredAt { get; set; }
+        public DateTime? LastPlayedAt { get; set; }
 
         private GameStatus _status = GameStatus.PendingValidation;
         public GameStatus Status
