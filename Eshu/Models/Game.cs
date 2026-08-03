@@ -19,7 +19,12 @@ namespace Eshu.Models
         // De qué tienda viene: "Steam", "Epic Games", "GOG", "Local"...
         public string Platform { get; set; } = string.Empty;
 
-        public string Genre { get; set; } = string.Empty;
+        private string _genre = string.Empty;
+        public string Genre
+        {
+            get => _genre;
+            set { _genre = value; OnPropertyChanged(); }
+        }
 
         private string? _installPath;
         public string? InstallPath

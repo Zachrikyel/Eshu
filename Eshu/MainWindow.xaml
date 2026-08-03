@@ -70,6 +70,16 @@
                     <Button x:Name="LaunchButton" Content="Iniciar" Click="LaunchButton_Click"
                             Padding="20,10" Background="{StaticResource CyanBrush}"
                             BorderThickness="0" HorizontalAlignment="Left"/>
+
+                    <!-- Marcar estado del juego seleccionado — esto faltaba desde el principio -->
+                    <StackPanel Orientation="Horizontal" Margin="0,14,0,0">
+                        <Button Content="No jugado" Tag="{x:Static models:GameStatus.Unplayed}" Click="SetStatus_Click" Margin="0,0,6,0" Padding="10,5" FontSize="11"/>
+                        <Button Content="Jugando" Tag="{x:Static models:GameStatus.Playing}" Click="SetStatus_Click" Margin="0,0,6,0" Padding="10,5" FontSize="11"/>
+                        <Button Content="Terminado" Tag="{x:Static models:GameStatus.Completed}" Click="SetStatus_Click" Margin="0,0,6,0" Padding="10,5" FontSize="11"/>
+                        <Button Content="Abandonado" Tag="{x:Static models:GameStatus.Abandoned}" Click="SetStatus_Click" Margin="0,0,6,0" Padding="10,5" FontSize="11"/>
+                        <Button Content="Pendiente" Tag="{x:Static models:GameStatus.PendingValidation}" Click="SetStatus_Click" Margin="0,0,12,0" Padding="10,5" FontSize="11"/>
+                        <ToggleButton Content="★ Favorito" Click="ToggleFavorite_Click" Padding="10,5" FontSize="11"/>
+                    </StackPanel>
                 </StackPanel>
             </StackPanel>
         </Border>
@@ -120,6 +130,24 @@
         <!-- Pie: atajos de teclado (todavía decorativos, la Parte 6 los conecta de verdad) -->
         <TextBlock Grid.Row="4" Margin="0,12,0,0" Foreground="{StaticResource TextSecondaryBrush}" FontSize="11"
                    Text="Enter inicia · F favorito · Ctrl+F buscar"/>
+
+        <!-- Overlay de recomendación: aparece al marcar un juego como Terminado.
+             Al ser el último hijo del Grid, queda encima de todo sin ZIndex explícito. -->
+        <Border x:Name="RecommendationOverlay" Grid.Row="0" Grid.RowSpan="5"
+                Background="#CC0B0E14" Visibility="Collapsed">
+            <Border Background="{StaticResource BgPanelBrush}" BorderBrush="{StaticResource AppBorderBrush}"
+                    BorderThickness="1" CornerRadius="16" Padding="32" MaxWidth="480"
+                    HorizontalAlignment="Center" VerticalAlignment="Center">
+                <StackPanel>
+                    <TextBlock x:Name="RecoStepLabel" Foreground="{StaticResource TextSecondaryBrush}" FontSize="12" Margin="0,0,0,8"/>
+                    <TextBlock x:Name="RecoQuestionText" Foreground="{StaticResource TextPrimaryBrush}"
+                               FontSize="20" FontWeight="Bold" TextWrapping="Wrap" Margin="0,0,0,20"/>
+                    <StackPanel x:Name="RecoOptionsPanel"/>
+                    <Button Content="Cerrar" Click="CloseRecommendationOverlay_Click"
+                            HorizontalAlignment="Right" Margin="0,20,0,0" Padding="14,6"/>
+                </StackPanel>
+            </Border>
+        </Border>
 
     </Grid>
 </Window>

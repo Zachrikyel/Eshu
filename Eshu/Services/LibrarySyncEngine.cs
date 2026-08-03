@@ -14,14 +14,17 @@ namespace Eshu.Services
     {
         private readonly IEnumerable<ILibraryAgent> _agents;
         private readonly IDbContextFactory<EshuDbContext> _dbContextFactory;
+        private readonly IgdbMetadataService _metadataService;
 
         public event Action<Game>? GameInstalled;
         public event Action<string, string>? GameUninstalled; // (Platform, Title)
+        public event Action<Game>? GameMetadataUpdated;
 
-        public LibrarySyncEngine(IEnumerable<ILibraryAgent> agents, IDbContextFactory<EshuDbContext> dbContextFactory)
+        public LibrarySyncEngine(IEnumerable<ILibraryAgent> agents, IDbContextFactory<EshuDbContext> dbContextFactory, IgdbMetadataService metadataService)
         {
             _agents = agents;
             _dbContextFactory = dbContextFactory;
+            _metadataService = metadataService;
         }
 
         // Escaneo completo — se llama al abrir la app y cuando el usuario pulsa "Sincronizar".
@@ -41,6 +44,39 @@ namespace Eshu.Services
             }
 
             await db.SaveChangesAsync();
+        }
+
+        // Se llama por separado del sync normal — 600 juegos a este ritmo tardan
+        // minutos, y no tiene sentido bloquear el botón "Sincronizar" por eso.
+        // Solo consulta los que todavía no tienen género (no repite trabajo).
+        public async Task EnrichMissingGenresAsync()
+        {
+            if (!_metadataService.IsConfigured) return;
+
+            List<Game> pending;
+            using (var db = await _dbContextFactory.CreateDbContextAsync())
+            {
+                pending = await db.Games.Where(g => g.Genre == "").ToListAsync();
+            }
+
+            foreach (var game in pending)
+            {
+                var genre = await _metadataService.FetchGenreAsync(game.Title);
+                if (!string.IsNullOrWhiteSpace(genre))
+                {
+                    using var db = await _dbContextFactory.CreateDbContextAsync();
+                    var tracked = await db.Games.FirstOrDefaultAsync(g => g.Id == game.Id);
+                    if (tracked != null)
+                    {
+                        tracked.Genre = genre;
+                        await db.SaveChangesAsync();
+                        GameMetadataUpdated?.Invoke(tracked);
+                    }
+                }
+
+                // El límite real de IGDB es 4/seg — con esto nos quedamos cómodos por debajo.
+                await Task.Delay(300);
+            }
         }
 
         // Un agente que falla (disco desconectado, plataforma no instalada) no debe

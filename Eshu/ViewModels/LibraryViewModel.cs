@@ -53,6 +53,7 @@ namespace Eshu.ViewModels
             // todo lo que toque Games tiene que volver al hilo de la interfaz primero.
             _syncEngine.GameInstalled += game => _dispatcher.Invoke(() => UpsertInCollection(game));
             _syncEngine.GameUninstalled += (platform, title) => _dispatcher.Invoke(() => MarkUninstalledInCollection(platform, title));
+            _syncEngine.GameMetadataUpdated += game => _dispatcher.Invoke(() => UpdateGenreInCollection(game));
         }
 
         // Se llama una vez al abrir la ventana: carga lo que ya está guardado y
@@ -61,7 +62,16 @@ namespace Eshu.ViewModels
         {
             await LoadFromDatabaseAsync();
             _syncEngine.StartWatchingAll();
-            _ = RunSyncAsync();
+            await RunSyncAsync();
+            StartBackgroundEnrichment();
+        }
+
+        // Aparte del sync normal: puede tardar minutos en una biblioteca de 600
+        // juegos, así que no bloquea nada — se dispara y la vitrina se va
+        // actualizando sola conforme van llegando resultados.
+        public void StartBackgroundEnrichment()
+        {
+            _ = _syncEngine.EnrichMissingGenresAsync();
         }
 
         public async Task RunSyncAsync()
@@ -75,6 +85,38 @@ namespace Eshu.ViewModels
             finally
             {
                 IsSyncing = false;
+            }
+        }
+
+        // Estos dos son los que faltaban desde el principio: marcar qué jugaste
+        // y qué te gusta, no solo verlo. Actualizan en memoria (la vitrina se
+        // refresca sola, Game ya notifica cambios) y guardan en la base al mismo tiempo.
+        public async Task SetSelectedGameStatusAsync(GameStatus status)
+        {
+            if (SelectedGame == null) return;
+            SelectedGame.Status = status;
+            GamesView.Refresh(); // por si algún chip de filtro ya no incluye este estado
+            await PersistSelectedGameAsync();
+        }
+
+        public async Task ToggleSelectedGameFavoriteAsync()
+        {
+            if (SelectedGame == null) return;
+            SelectedGame.IsFavorite = !SelectedGame.IsFavorite;
+            GamesView.Refresh();
+            await PersistSelectedGameAsync();
+        }
+
+        private async Task PersistSelectedGameAsync()
+        {
+            if (SelectedGame == null) return;
+            using var db = await _dbContextFactory.CreateDbContextAsync();
+            var tracked = await db.Games.FirstOrDefaultAsync(g => g.Id == SelectedGame.Id);
+            if (tracked != null)
+            {
+                tracked.Status = SelectedGame.Status;
+                tracked.IsFavorite = SelectedGame.IsFavorite;
+                await db.SaveChangesAsync();
             }
         }
 
@@ -111,6 +153,15 @@ namespace Eshu.ViewModels
             if (existing != null)
             {
                 existing.IsInstalled = false;
+            }
+        }
+
+        private void UpdateGenreInCollection(Game updated)
+        {
+            var existing = Games.FirstOrDefault(g => g.Id == updated.Id);
+            if (existing != null)
+            {
+                existing.Genre = updated.Genre;
             }
         }
 

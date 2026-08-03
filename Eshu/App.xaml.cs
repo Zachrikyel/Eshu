@@ -48,6 +48,8 @@ namespace Eshu
 
             services.AddSingleton<LibrarySyncEngine>();
             services.AddSingleton<LibraryViewModel>();
+            services.AddSingleton<IgdbMetadataService>();
+            services.AddSingleton<RecommendationEngine>();
 
             // Parte 5: aquí entra MainWindow, pidiendo LibraryViewModel del contenedor.
         }
